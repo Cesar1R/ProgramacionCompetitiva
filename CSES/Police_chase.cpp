@@ -12,6 +12,7 @@ typedef struct Edge {
     ll c; // capacidad
     ll f; // flujo
     int to;
+    int from; 
 } edge;
 
 class FordFulkerson {
@@ -25,24 +26,30 @@ public:
         return f;
     }
 
-    vector<pair<int, int>> getMinCut(int s) {
-        vector<bool> visited(g.size(), false);
-        dfs(s, visited);
-        
-        vector<pair<int, int>> cutEdges;
-        for (int u = 0; u < g.size(); u++) {
-            if (visited[u]) {
-                for (const auto &p : g[u]) {
-                    int v = p.first; // nodo destino
-                    int eI = eIndexes[u][0]; // índice de la arista de u a v
-                    if (!visited[v] && edges[eI].f < edges[eI].c) {
-                        cutEdges.emplace_back(u, v); // Agrega el par (origen, destino)
-                    }
-                }
+
+    vector<pair<int, int>> get_path (int s) {
+        vector<pair<int, int>> aristas = getMinCut(s); 
+        set<int> nodos_alcanzables; 
+
+        for(const auto &arista: aristas){
+            nodos_alcanzables.insert(arista.first); 
+            nodos_alcanzables.insert(arista.second);
+        }
+
+        vector<pair<int, int>> res; 
+
+        for(const auto &edge: edges){ 
+            if( nodos_alcanzables.find(edge.from) != nodos_alcanzables.end() 
+                && nodos_alcanzables.find(edge.to) == nodos_alcanzables.end()
+                && edge.f > 0){
+            
+                res.emplace_back(edge.from, edge.to); 
             }
         }
-        return cutEdges;
+
+        return res; 
     }
+
 
 private:
     vector<vector<pair<int, ll>>> g;  // to, capacidad
@@ -50,15 +57,15 @@ private:
     vector<vector<int>> eIndexes;
 
     void init() {
-        edges.clear(); 
-        eIndexes.clear(); 
+        edges.clear();
+        eIndexes.clear();
         eIndexes.resize(g.size());
-        for (ll i = 0; i < (ll)g.size(); i++) {
-            for (ll j = 0; j < (ll)g[i].size(); j++) {
-                edges.push_back({ g[i][j].second, 0, g[i][j].first });
-                edges.push_back({ 0, 0, (int)i });
-                eIndexes[i].pb(edges.size() - 2);
-                eIndexes[g[i][j].first].pb(edges.size() - 1);
+        for (ll i = 0; i < g.size(); i++) {
+            for (const auto& edge : g[i]) {
+                edges.push_back({ edge.second, 0, edge.first, (int)i });
+                edges.push_back({ 0, 0, (int)i, edge.first }); 
+                eIndexes[i].push_back(edges.size() - 2);
+                eIndexes[edge.first].push_back(edges.size() - 1);
             }
         }
     }
@@ -100,11 +107,33 @@ private:
         return true;
     }
 
+    vector<pair<int, int>> getMinCut(int s) {
+        vector<bool> visited(g.size(), false);
+        dfs(s, visited);
+        
+        vector<pair<int, int>> cutEdges;
+        for (int u = 0; u < g.size(); u++) {
+            if (visited[u]) {
+                for (const auto &p : g[u]) {
+                    int v = p.first; // nodo destino
+                    int eI = eIndexes[u][0]; // índice de la arista de u a v
+                    // Cambia la manera de obtener el índice eI aquí:
+                    for (int idx : eIndexes[u]) {
+                        if (edges[idx].to == v && edges[idx].f < edges[idx].c) {
+                            cutEdges.emplace_back(u, v); // Agrega el par (origen, destino)
+                        }
+                    }
+                }
+            }
+        }
+        return cutEdges;
+    }
+
     void dfs(int u, vector<bool> &visited) {
         visited[u] = true;
         for (const auto &p : g[u]) {
             if (!visited[p.first]) {
-                int eI = eIndexes[u][0]; // Considerar el primer índice de arista
+                int eI = eIndexes[u][0]; 
                 if (edges[eI].c > edges[eI].f) {
                     dfs(p.first, visited);
                 }
@@ -120,13 +149,13 @@ int main(){
     cin.tie(0); 
     cout.tie(0); 
 
-    int n, //cruces 
-        m,  //calles 
+    int n,
+        m,  
         i, from, to;
 
     cin >> n >> m; 
 
-    vector<vector<pair<int, ll>>> cross (m+1);   
+    vector<vector<pair<int, ll>>> cross (n+1);   
 
 
     for(i = 1; i <= m; i++){
@@ -139,9 +168,8 @@ int main(){
 
     cout << g.getMaxFlow(1, n) << endl;
 
-    vector<pair<int, int>> cruces = g.getMinCut(1); 
+    vector<pair<int, int>> cruces = g.get_path(1); 
 
-    cout >> 
 
     for(const auto & pareja: cruces){
         cout << pareja.first << " " << pareja.second << endl; 
